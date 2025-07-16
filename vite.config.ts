@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { fileURLToPath } from 'node:url';
 import dts from 'vite-plugin-dts';
 import screwUp from 'screw-up';
 
@@ -13,17 +12,14 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: resolve(fileURLToPath(new URL('.', import.meta.url)), 'src/index.ts'),
+      entry: resolve(__dirname, 'src/index.ts'),
       name: 'SublimityRpc',
+      fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'mjs' : 'js'}`,
       formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`,
-    },
-    rollupOptions: {
-      external: [],output: {
-        globals: {},
-      }
     },
     target: 'es2018',
-    minify: false,
+    rollupOptions: {
+      external: []
+    }
   },
 });
