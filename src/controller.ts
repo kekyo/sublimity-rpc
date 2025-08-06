@@ -137,11 +137,11 @@ export const createSublimityRpcController =
    * @param obj - The object to register.
    * @returns The special descriptor object if the object is a function or AbortSignal, otherwise the original object.
    */
-  const tryRegisterSpecialObject = (obj: any): any => {
+  const tryRegisterSpecialObject = (arg: any): any => {
     // Is argument a function?
-    if (obj instanceof Function) {
+    if (arg instanceof Function) {
       // Is this function does not registered?
-      let fobj = obj as __TargetFunction;
+      let fobj = arg as __TargetFunction;
       if (!fobj.__srpcId) {
         // Register anonymous function to object map
         const functionId = crypto.randomUUID();
@@ -160,9 +160,9 @@ export const createSublimityRpcController =
       return functionDescriptor;
     }
     // Is argument an AbortSignal?
-    else if (obj instanceof AbortSignal) {
+    else if (arg instanceof AbortSignal) {
       // Is this AbortSignal does not registered?
-      let aobj = obj as __AbortSignal;
+      let aobj = arg as __AbortSignal;
       let abortSignalId = aobj.__srpcId;
       if (!abortSignalId) {
         // Register AbortSignal to object map
@@ -188,7 +188,7 @@ export const createSublimityRpcController =
             logger.warn(`Failed to send abort signal: messageId=${messageId}, abortSignalId=${abortSignalId}, error=${error}`);
           }
         };
-        obj.addEventListener('abort', handleAbort);
+        arg.addEventListener('abort', handleAbort);
       }
 
       // Return abort descriptor object
@@ -199,7 +199,7 @@ export const createSublimityRpcController =
       return abortDescriptor;
     } else {
       // Return original argument if not a function or AbortSignal.
-      return obj;
+      return arg;
     }
   };
 
@@ -225,6 +225,7 @@ export const createSublimityRpcController =
             // Register stub function in object map
             stubFunction.__srpcId = functionId;
             objectMap.set(functionId, new WeakRef(stubFunction));
+            fr.register(stubFunction, functionId, stubFunction);
           }
           // Return stub function
           return stubFunction;
@@ -274,9 +275,10 @@ export const createSublimityRpcController =
     invocations.set(messageId, deferred);
 
     // Check each argument for functions and replace with special objects
+    const _args = [];
     for (let argIndex = 0; argIndex < args.length; argIndex++) {
       // Replace function arguments with special function objects
-      args[argIndex] = tryRegisterSpecialObject(args[argIndex]);
+      _args.push(tryRegisterSpecialObject(args[argIndex]));
     }
 
     try {
@@ -285,12 +287,12 @@ export const createSublimityRpcController =
         kind: "invoke",
         messageId,
         functionId,
-        args
+        args: _args
       });
     } catch (error: unknown) {
       // Invocation is completed with immediate error
       invocations.delete(messageId);
-      logger.warn(`Failed to send invoke message immediately: messageId=${messageId}, error=${error}`);
+      logger.warn(`Failed sending invoke message to peer: messageId=${messageId}, error=${error}`);
       throw error;
     }
 
@@ -310,9 +312,10 @@ export const createSublimityRpcController =
     const messageId = crypto.randomUUID();
 
     // Check each argument for functions and replace with special objects
+    const _args = [];
     for (let argIndex = 0; argIndex < args.length; argIndex++) {
       // Replace function arguments with special function objects
-      args[argIndex] = tryRegisterSpecialObject(args[argIndex]);
+      _args.push(tryRegisterSpecialObject(args[argIndex]));
     }
 
     try {
@@ -322,11 +325,11 @@ export const createSublimityRpcController =
         messageId,
         functionId,
         oneWay: true,
-        args
+        args: _args
       });
     } catch (error: unknown) {
       // Invocation is completed with immediate error
-      logger.warn(`Failed to send invoke message immediately: messageId=${messageId}, error=${error}`);
+      logger.warn(`Failed sending invoke message to peer: messageId=${messageId}, error=${error}`);
       throw error;
     }
   };
@@ -381,23 +384,24 @@ export const createSublimityRpcController =
               error: new Error(`Function '${functionId}' is not found`)
             });
           } catch (error: unknown) {
-            // Function is not found
-            logger.warn(`Spurious invoke message: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
+            // Unknown sending to peer error
+            logger.warn(`Failed sending error message to peer: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
           }
           return;
         }
 
         // Replace special descriptor objects with appropriate objects
+        const _args = [];
         for (let argIndex = 0; argIndex < message.args.length; argIndex++) {
           // Process argument through tryRegisterStubObject
-          message.args[argIndex] = tryRegisterStubObject(message.args[argIndex]);
+          _args.push(tryRegisterStubObject(message.args[argIndex]));
         }
 
         // If the message is one-way, return immediately
         if (message.oneWay) {
           // Invoke this one-way function
           try {
-            void f(...message.args);
+            void f(..._args);
           } catch (error: unknown) {
             // Error invoking one-way function
             logger.warn(`Error invoking one-way function: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
@@ -408,7 +412,7 @@ export const createSublimityRpcController =
         let result: any;
         try {
           // Invoke this function
-          result = await f(...message.args);
+          result = await f(..._args);
         } catch (error: any) {
           // Create safe error object
           const seo: Error = {
@@ -428,24 +432,24 @@ export const createSublimityRpcController =
             });
           } catch (error: unknown) {
             // Error sending
-            logger.warn(`Error sending error message: messageId=${message.messageId}, error=${error}`);
+            logger.warn(`Failed sending error message to peer: messageId=${message.messageId}, error=${error}`);
           }
           return;
         }
 
         // Register result as anonymous function when it is a function
-        result = tryRegisterSpecialObject(result);
+        const _result = tryRegisterSpecialObject(result);
 
         try {
           // Send result message to peer controller
           onSendMessage({
             kind: "result",
             messageId: message.messageId,
-            result
+            result : _result
           });
         } catch (error: unknown) {
           // Error sending
-          logger.warn(`Error sending result message: messageId=${message.messageId}, error=${error}`);
+          logger.warn(`Failed sending result message to peer: messageId=${message.messageId}, error=${error}`);
         }
         break;
       }
@@ -465,7 +469,7 @@ export const createSublimityRpcController =
           deferred.resolve(result);
         } else {
           // Deferred object is not found
-          logger.warn(`Spurious result message: messageId=${message.messageId}, result=${message.result}`);
+          logger.warn(`Failed examine result message: messageId=${message.messageId}, result=${message.result}`);
         }
         break;
       }
@@ -491,7 +495,7 @@ export const createSublimityRpcController =
           deferred.reject(error);
         } else {
           // Deferred object is not found
-          logger.warn(`Spurious error message: messageId=${message.messageId}, error=${message.error.name}, ${message.error.message}`);
+          logger.warn(`Failed examine error message: messageId=${message.messageId}, error=${message.error.name}, ${message.error.message}`);
         }
         break;
       }
@@ -507,6 +511,8 @@ export const createSublimityRpcController =
           // Remove from object map
           objectMap.delete(message.functionId);
           fr.unregister(fobj);
+
+          delete fobj.__srpcId;
         }
         break;
       }

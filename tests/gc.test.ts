@@ -4,10 +4,10 @@ import { SublimityRpcMessage } from '../src/types';
 
 describe('Garbage Collection Tests', () => {
   it('should warn on logger after GC collection of anonymous functions', async () => {
-    let capturedLog1: string[] = [];
-    const logger1 = {
+    let capturedLog2: string[] = [];
+    const logger2 = {
       debug: message => {
-        capturedLog1.push(message);
+        capturedLog2.push(message);
       },
       info: () => {},
       warn: () => {},
@@ -15,19 +15,21 @@ describe('Garbage Collection Tests', () => {
     };
 
     // Create two controllers to simulate RPC communication
+    // [test actor]        ==> controller1 --> controller2 ==> testFunction()
+    // anonymousFunction() <== controller1 <-- controller2 <==/ (callback)
     const controller1 = createSublimityRpcController({
       onSendMessage: (message) => {
         // Forward message to controller2
         setTimeout(() => controller2.insertMessage(message), 0);
-      },
-      logger: logger1
+      }
     });
 
     const controller2 = createSublimityRpcController({
       onSendMessage: (message) => {
         // Forward message to controller1
         setTimeout(() => controller1.insertMessage(message), 0);
-      }
+      },
+      logger: logger2
     });
 
     // Register a function that accepts another function as parameter
@@ -69,8 +71,8 @@ describe('Garbage Collection Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    expect(capturedLog1).toHaveLength(1);
-    expect(capturedLog1[0]).toContain("Function purged: functionId=");
+    expect(capturedLog2).toHaveLength(1);
+    expect(capturedLog2[0]).toContain("Function purged: functionId=");
 
     // Clean up
     controller1.release();
@@ -82,6 +84,8 @@ describe('Garbage Collection Tests', () => {
     let messageHistory: SublimityRpcMessage[] = [];
 
     // Create two controllers to simulate RPC communication
+    // [test actor]        ==> controller1 --> controller2 ==> testFunction()
+    // anonymousFunction() <== controller1 <-- controller2 <==/ (callback)
     const controller1 = createSublimityRpcController({
       onSendMessage: (message) => {
         messageHistory.push(message);
@@ -110,7 +114,7 @@ describe('Garbage Collection Tests', () => {
     });
 
     // Create an anonymous function and call the registered function
-    let anonymousFunction: ((a: number) => Promise<number>) | null = async (a: number) => {
+    let anonymousFunction: ((a: number) => Promise<number>) | undefined = async (a: number) => {
       return a + 10;
     };
 
@@ -120,7 +124,7 @@ describe('Garbage Collection Tests', () => {
     expect(capturedFunctionId).toBeDefined();
 
     // Clear the reference to the anonymous function
-    anonymousFunction = null;
+    anonymousFunction = undefined;
 
     // Force garbage collection (Node.js specific)
     if (global.gc) {
@@ -144,25 +148,19 @@ describe('Garbage Collection Tests', () => {
 
     // Now try to call the function directly with the captured function ID
     // This should fail because the anonymous function was garbage collected
-    let errorCaught = false;
-    try {
-      // Create a fake invoke message with the captured function ID
-      const fakeInvokeMessage: SublimityRpcMessage = {
-        kind: 'invoke',
-        messageId: crypto.randomUUID(),
-        functionId: capturedFunctionId!,
-        args: [100]
-      };
+    // Create a fake invoke message with the captured function ID
+    const fakeInvokeMessage: SublimityRpcMessage = {
+      kind: 'invoke',
+      messageId: crypto.randomUUID(),
+      functionId: capturedFunctionId!,
+      args: [100]
+    };
 
-      // Insert the fake message directly
-      controller2.insertMessage(fakeInvokeMessage);
+    // Insert the fake message directly
+    controller2.insertMessage(fakeInvokeMessage);
 
-      // Wait for the error message to be sent
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-    } catch (error) {
-      errorCaught = true;
-    }
+    // Wait for the error message to be sent
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     // Check that an error message was sent indicating the function was not found
     const errorMessages = messageHistory.filter(msg => msg.kind === 'error');
