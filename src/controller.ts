@@ -148,6 +148,8 @@ export const createSublimityRpcController =
         fobj.__srpcId = functionId;
         objectMap.set(functionId, new WeakRef(fobj));
         fr.register(fobj, functionId, fobj);
+        // Also register in functionRegistry to keep it alive until peer sends purge
+        functionRegistry.set(functionId, fobj);
       }
 
       // Return function descriptor object
@@ -223,7 +225,6 @@ export const createSublimityRpcController =
             // Register stub function in object map
             stubFunction.__srpcId = functionId;
             objectMap.set(functionId, new WeakRef(stubFunction));
-            functionRegistry.set(functionId, stubFunction);
           }
           // Return stub function
           return stubFunction;
