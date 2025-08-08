@@ -16,7 +16,7 @@ export interface Logger {
  * Base RPC message interface.
  */
 export interface SublimityRpcMessageBase {
-  readonly kind: "invoke" | "result" | "error" | "purge";
+  readonly kind: "invoke" | "result" | "error" | "purge" | "none";
   /**
    * Message ID.
    * @remarks This is a unique identifier for a calling transaction.
@@ -83,10 +83,17 @@ export interface SublimityRpcMessagePurge extends SublimityRpcMessageBase {
 }
 
 /**
+ * Nothing operator interface.
+ */
+export interface SublimityRpcMessageNone extends SublimityRpcMessageBase {
+  readonly kind: "none";
+}
+
+/**
  * Sublimity RPC message type.
  */
 export type SublimityRpcMessage =
-  SublimityRpcMessageInvoke | SublimityRpcMessageResult | SublimityRpcMessageError | SublimityRpcMessagePurge;
+  SublimityRpcMessageInvoke | SublimityRpcMessageResult | SublimityRpcMessageError | SublimityRpcMessagePurge | SublimityRpcMessageNone;
 
 /**
  * Sublimity RPC controller options interface.
@@ -104,9 +111,11 @@ export interface SublimityRpcControllerOptions {
   logger?: Logger;
   /**
    * Send message handler. Always required.
-   * @remarks This is the callback to have to send a RPC message to the target controller.
+   * @remarks 
+   * - Return void for traditional async message passing (fire-and-forget)
+   * - Return Promise<SublimityRpcMessage> for synchronous RPC pattern (must return response message)
    */
-  onSendMessage: (message: SublimityRpcMessage) => void;
+  onSendMessage: (message: SublimityRpcMessage) => void | Promise<SublimityRpcMessage>;
   /**
    * Produce stack trace.
    * @remarks This is the flag to produce stack trace to return to the caller. Default is false.
@@ -187,9 +196,17 @@ export interface SublimityRpcController extends Releasable {
     functionId: string, ...args: TParameters) => AsyncGenerator<TResult, void, unknown>;
 
   /**
-   * Insert a RPC message to controller.
+   * Insert a RPC message to controller (fire-and-forget).
    * @param message - The message to insert.
    * @remarks Insert a RPC message. Then the controller will handle and invocation to target function.
    */
   readonly insertMessage: (message: SublimityRpcMessage) => void;
+  
+  /**
+   * Insert a RPC message to controller and return response.
+   * @param message - The message to insert.
+   * @returns Promise that resolves with response message.
+   * @remarks Processes RPC message and returns response for synchronous RPC pattern.
+   */
+  readonly insertMessageWaitable: (message: SublimityRpcMessage) => Promise<SublimityRpcMessage>;
 }

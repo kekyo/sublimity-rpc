@@ -263,16 +263,12 @@ export const createSublimityRpcController =
    * @returns A promise that resolves to the result of the function.
    */
   const invoke = async <TResult, TParameters extends any[]>(
-    functionId: string, ...args: TParameters) => {
+    functionId: string, ...args: TParameters): Promise<TResult> => {
     
     const signal = extractAbortSignal(args);
 
     // Create message ID
     const messageId = crypto.randomUUID();
-    // Create deferred object to awaitable result
-    const deferred = createDeferred<TResult>(signal);
-    // Register deferred object
-    invocations.set(messageId, deferred);
 
     // Check each argument for functions and replace with special objects
     const _args = [];
@@ -281,23 +277,59 @@ export const createSublimityRpcController =
       _args.push(tryRegisterSpecialObject(args[argIndex]));
     }
 
+    // Create deferred object to awaitable result (must be before onSendMessage for sync handling)
+    const deferred = createDeferred<TResult>(signal);
+    // Register deferred object
+    invocations.set(messageId, deferred);
+
     try {
       // Send invoking message to peer controller
-      onSendMessage({
+      const sendResult = onSendMessage({
         kind: "invoke",
         messageId,
         functionId,
         args: _args
       });
+      
+      // If onSendMessage returns a Promise<SublimityRpcMessage>, handle synchronous RPC
+      if (sendResult instanceof Promise) {
+        const response = await sendResult;
+        
+        // Remove deferred since we got immediate response
+        invocations.delete(messageId);
+        
+        // Process response directly
+        if (response.kind === "result" && response.messageId === messageId) {
+          const result = tryRegisterStubObject(response.result);
+          return result as TResult;
+        } else if (response.kind === "error" && response.messageId === messageId) {
+          const error = new Error(response.error.message);
+          error.name = response.error.name;
+          if (produceStackTrace && response.error.stack) {
+            error.stack += response.error.stack;
+          }
+          throw error;
+        } else if (response.kind === "none" && response.messageId === messageId) {
+          // None response means the message was processed but has no result (one-way)
+          // This shouldn't happen in invoke, but handle gracefully
+          // One-way function is needed to result `Promise<any>`, so here is returning it.
+          return undefined as any;
+        } else {
+          // Unexpected response
+          throw new Error(`Unexpected response: ${response.kind} for messageId: ${messageId}`);
+        }
+      }
+      
+      // Traditional async mode: Deferred already registered above
+      // Return promise to awaitable result
+      return deferred.promise;
+      
     } catch (error: unknown) {
-      // Invocation is completed with immediate error
+      // Clean up on error
       invocations.delete(messageId);
       logger.warn(`Failed sending invoke message to peer: messageId=${messageId}, error=${error}`);
       throw error;
     }
-
-    // Return promise to awaitable result
-    return deferred.promise;
   };
 
   /**
@@ -306,7 +338,7 @@ export const createSublimityRpcController =
    * @param args - The arguments to pass to the function.
    */
   const invokeOneWay = <TParameters extends any[]>(
-    functionId: string, ...args: TParameters) => {
+    functionId: string, ...args: TParameters): void => {
 
     // Create message ID
     const messageId = crypto.randomUUID();
@@ -367,27 +399,189 @@ export const createSublimityRpcController =
    * @param message - The message to insert.
    * @remarks Insert a RPC message. Then the controller will handle and invocation to target function.
    */
-  const insertMessage = async (message: SublimityRpcMessage) => {
-    // Handle message
+  const insertMessage = (message: SublimityRpcMessage): void => {
+    const inner = async (message: SublimityRpcMessage) => {
+      // Handle message
+      switch (message.kind) {
+        // Handle invoke message
+        case "invoke": {
+          // Get function from functions map
+          const functionId = message.functionId;
+          const f = objectMap.get(functionId)?.deref() as __TargetFunction | undefined;
+          if (!f) {
+            try {
+              // Send error message to peer controller
+              onSendMessage({
+                kind: "error",
+                messageId: message.messageId,
+                error: new Error(`Function '${functionId}' is not found`)
+              });
+            } catch (error: unknown) {
+              // Unknown sending to peer error
+              logger.warn(`Failed sending error message to peer: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
+            }
+            return;
+          }
+
+          // Replace special descriptor objects with appropriate objects
+          const _args = [];
+          for (let argIndex = 0; argIndex < message.args.length; argIndex++) {
+            // Process argument through tryRegisterStubObject
+            _args.push(tryRegisterStubObject(message.args[argIndex]));
+          }
+
+          // If the message is one-way, return immediately
+          if (message.oneWay) {
+            // Invoke this one-way function
+            try {
+              void f(..._args);
+            } catch (error: unknown) {
+              // Error invoking one-way function
+              logger.warn(`Error invoking one-way function: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
+            }
+            return;
+          }
+
+          let result: any;
+          try {
+            // Invoke this function
+            result = await f(..._args);
+          } catch (error: any) {
+            // Create safe error object
+            const seo: Error = {
+              name: error instanceof Error ? error.name : (error as any).constructor.name,
+              message: error instanceof Error ? error.message : String(error)
+            };
+            // Add stack trace to error object if requested
+            if (produceStackTrace && error.stack) {
+              seo.stack = `\n------- Remote stack trace [${controllerId}]:\n${error.stack}`;
+            }
+            try {
+              // Send error message to peer controller
+              onSendMessage({
+                kind: "error",
+                messageId: message.messageId,
+                error: seo
+              });
+            } catch (error: unknown) {
+              // Error sending
+              logger.warn(`Failed sending error message to peer: messageId=${message.messageId}, error=${error}`);
+            }
+            return;
+          }
+
+          // Register result as anonymous function when it is a function
+          const _result = tryRegisterSpecialObject(result);
+
+          try {
+            // Send result message to peer controller
+            onSendMessage({
+              kind: "result",
+              messageId: message.messageId,
+              result : _result
+            });
+          } catch (error: unknown) {
+            // Error sending
+            logger.warn(`Failed sending result message to peer: messageId=${message.messageId}, error=${error}`);
+          }
+          break;
+        }
+
+        // Handle result message
+        case "result": {
+          // Get deferred object
+          const deferred = invocations.get(message.messageId);
+          if (deferred) {
+            // Remove deferred object because this transaction is completed
+            invocations.delete(message.messageId);
+
+            // Process result through tryRegisterStubObject
+            const result = tryRegisterStubObject(message.result);
+
+            // Resolve deferred object
+            deferred.resolve(result);
+          } else {
+            // Deferred object is not found
+            logger.warn(`Failed examine result message: messageId=${message.messageId}, result=${message.result}`);
+          }
+          break;
+        }
+
+        // Handle error message
+        case "error": {
+          // Get deferred object
+          const deferred = invocations.get(message.messageId);
+          if (deferred) {
+            // Remove deferred object because this transaction is completed
+            invocations.delete(message.messageId);
+
+            // Create real error object
+            const error = new Error(message.error.message);
+            error.name = message.error.name;
+
+            // Add stack trace to error object if requested
+            if (produceStackTrace && message.error.stack) {
+              error.stack += message.error.stack;
+            }
+
+            // Reject deferred object
+            deferred.reject(error);
+          } else {
+            // Deferred object is not found
+            logger.warn(`Failed examine error message: messageId=${message.messageId}, error=${message.error.name}, ${message.error.message}`);
+          }
+          break;
+        }
+
+        // Purge message
+        case "purge": {
+          const fobj = functionRegistry.get(message.functionId) as __TargetFunction | undefined;
+          if (fobj) {
+            logger.debug(`Purge request arrived: messageId=${message.messageId}, functionId=${message.functionId}`);
+
+            // Remove from function registry
+            functionRegistry.delete(message.functionId);
+            // Remove from object map
+            objectMap.delete(message.functionId);
+            fr.unregister(fobj);
+
+            delete fobj.__srpcId;
+          }
+          break;
+        }
+
+        // None message
+        case "none": {
+          logger.debug(`None message arrived: messageId=${message.messageId}`);
+          break;
+        }
+      }
+    };
+    void inner(message);
+  }
+
+  /**
+   * Insert a RPC message to controller and return response.
+   * @param message - The message to insert.
+   * @returns Promise that resolves with response message.
+   * @remarks Processes RPC message and returns response for synchronous RPC pattern.
+   */
+  const insertMessageWaitable = async (message: SublimityRpcMessage): Promise<SublimityRpcMessage> => {
+    
     switch (message.kind) {
       // Handle invoke message
       case "invoke": {
         // Get function from functions map
         const functionId = message.functionId;
         const f = objectMap.get(functionId)?.deref() as __TargetFunction | undefined;
+        
         if (!f) {
-          try {
-            // Send error message to peer controller
-            onSendMessage({
-              kind: "error",
-              messageId: message.messageId,
-              error: new Error(`Function '${functionId}' is not found`)
-            });
-          } catch (error: unknown) {
-            // Unknown sending to peer error
-            logger.warn(`Failed sending error message to peer: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
-          }
-          return;
+          // Return error response
+          return {
+            kind: "error",
+            messageId: message.messageId,
+            error: new Error(`Function '${functionId}' is not found`)
+          };
         }
 
         // Replace special descriptor objects with appropriate objects
@@ -397,18 +591,22 @@ export const createSublimityRpcController =
           _args.push(tryRegisterStubObject(message.args[argIndex]));
         }
 
-        // If the message is one-way, return immediately
+        // Handle one-way messages
         if (message.oneWay) {
-          // Invoke this one-way function
           try {
             void f(..._args);
-          } catch (error: unknown) {
-            // Error invoking one-way function
-            logger.warn(`Error invoking one-way function: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
+          } catch (error: any) {
+            logger.warn(`Raise an error for one-way function: messageId=${message.messageId}, ${error.message}}`);
           }
-          return;
+          // Return none response for one-way messages
+          // (Waitable invoker has to return a message, so that is none operator)
+          return {
+            kind: "none",
+            messageId: message.messageId,
+          };
         }
 
+        // Handle normal invocation
         let result: any;
         try {
           // Invoke this function
@@ -423,35 +621,24 @@ export const createSublimityRpcController =
           if (produceStackTrace && error.stack) {
             seo.stack = `\n------- Remote stack trace [${controllerId}]:\n${error.stack}`;
           }
-          try {
-            // Send error message to peer controller
-            onSendMessage({
-              kind: "error",
-              messageId: message.messageId,
-              error: seo
-            });
-          } catch (error: unknown) {
-            // Error sending
-            logger.warn(`Failed sending error message to peer: messageId=${message.messageId}, error=${error}`);
-          }
-          return;
+
+          // Return error response
+          return {
+            kind: "error",
+            messageId: message.messageId,
+            error: seo
+          };
         }
 
         // Register result as anonymous function when it is a function
         const _result = tryRegisterSpecialObject(result);
-
-        try {
-          // Send result message to peer controller
-          onSendMessage({
-            kind: "result",
-            messageId: message.messageId,
-            result : _result
-          });
-        } catch (error: unknown) {
-          // Error sending
-          logger.warn(`Failed sending result message to peer: messageId=${message.messageId}, error=${error}`);
-        }
-        break;
+        
+        // Return success response
+        return {
+          kind: "result",
+          messageId: message.messageId,
+          result: _result
+        };
       }
 
       // Handle result message
@@ -471,10 +658,11 @@ export const createSublimityRpcController =
           // Deferred object is not found
           logger.warn(`Failed examine result message: messageId=${message.messageId}, result=${message.result}`);
         }
-        break;
+        // Return the message as-is
+        return message;
       }
 
-      // Handle error message
+      // Handle error message  
       case "error": {
         // Get deferred object
         const deferred = invocations.get(message.messageId);
@@ -497,7 +685,8 @@ export const createSublimityRpcController =
           // Deferred object is not found
           logger.warn(`Failed examine error message: messageId=${message.messageId}, error=${message.error.name}, ${message.error.message}`);
         }
-        break;
+        // Return the message as-is
+        return message;
       }
 
       // Purge message
@@ -514,7 +703,15 @@ export const createSublimityRpcController =
 
           delete fobj.__srpcId;
         }
-        break;
+        // Return the message as-is
+        return message;
+      }
+
+      // None message
+      case "none": {
+        logger.debug(`None message arrived: messageId=${message.messageId}`);
+        // Return the message as-is (maybe spurious)
+        return message;
       }
     }
   };
@@ -547,6 +744,7 @@ export const createSublimityRpcController =
     invokeOneWay,
     iterate,
     insertMessage,
+    insertMessageWaitable,
     release,
     [Symbol.dispose]: release
   };
