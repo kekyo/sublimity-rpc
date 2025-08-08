@@ -190,6 +190,42 @@ await controller.invoke(
   "haga", controller.signal);
 ```
 
+### Synchronous RPC mode
+
+By default, Sublimity RPC operates asynchronously, but it also supports synchronous RPC patterns. This is useful when working with communication layers that can return responses immediately, such as Electron IPC.
+
+#### Using insertMessageWaitable()
+
+When you need to get a response message directly, use `insertMessageWaitable()`:
+
+```typescript
+// Traditional async mode
+controller.insertMessage(message); // fire-and-forget
+
+// Synchronous mode - returns response message
+const response = await controller.insertMessageWaitable(message);
+// response will be the result/error/none message
+```
+
+#### Configuring onSendMessage() for synchronous mode
+
+You can configure `onSendMessage()` to return a Promise with the response message:
+
+```typescript
+// Synchronous RPC mode (e.g., for Electron IPC)
+const controller = createSublimityRpcController({
+  onSendMessage: async message => {
+    // Send and immediately get response
+    const response = await ipcRenderer.invoke('rpc-channel', message);
+    return response; // Return the response message
+  }
+});
+
+// The controller will automatically use synchronous mode when onSendMessage returns a Promise
+```
+
+This mode provides better performance by avoiding the Deferred pattern when the communication layer supports synchronous request-response patterns.
+
 ### Async generators
 
 Sublimity RPC supports async generators for streaming data transfer. You can register an async generator function and consume it on the peer side.
