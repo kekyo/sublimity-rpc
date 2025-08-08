@@ -2,11 +2,15 @@
 
 Core implementation of pure RPC engine in TypeScript.
 
-[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+![sublimity-rpc](./images/sublimity-rpc-120.png)
+
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![npm version](https://img.shields.io/npm/v/sublimity-rpc.svg)](https://www.npmjs.com/package/asublimity-rpc)
 
 ----
+
+[(日本語はこちら)](README_ja.md)
 
 ## What is this?
 
@@ -41,13 +45,15 @@ graph LR
 The RPC engine provides the following functionality:
 
 * Identification of the calling function by identifier (string).
-* Can use arbitrary values (primitive values, objects and function objects). Yes, can be specified as "Function object (callback functions)." The same applies to return values.
+* Can use arbitrary values (primitive values, objects and function objects).
 * All functions return `Promise<T>`, so they are fully asynchronous operation.
 * Can expose asynchronous-generator `AsyncGenerator<T, void, unknown>`, it handles streaming value transfer.
 * Arguments can be `AbortSignal`.
 
 Function objects can be specified as arguments and return values. In other words, callback RPC is also supported.
-RPC implementation, "Fully symmetric" and "Full-duplex" asynchronous mutual callable. Of course, callback RPC is included.
+RPC implementation, "Fully symmetric" and "Full-duplex" asynchronous mutual callable.
+
+----
 
 ## Installation
 
@@ -103,7 +109,7 @@ controller.insertMessage(message);
 
 The following code exposes the `add` function to the peer controller.
 
-Note that the function to be exposed returns `Promise`.
+Note that the function to be exposed returns `Promise<T>`.
 What types can be used depends on the types supported by serialization and reverse serialization.
 If you are using TypeScript or JavaScript, you will find that you can specify JSON with almost the same feeling as accessing a Web API.
 
@@ -123,7 +129,7 @@ const disposer = controller.register({
 disposer.release();
 ```
 
-Also, if you specify a function type, it will be automatically converted and replaced with the safest string possible.
+Also, if you specify a function object, it will be automatically converted and replaced with the safest string possible.
 So you don't have to worry about serialization.
 
 ```typescript
@@ -147,20 +153,6 @@ const result = await controller.invoke(
   // await add(1, 2)
   'add',
   1, 2);
-
-expected(result).toBe(3);
-```
-
-### Callback functions
-
-Yes, you can invoke with callback function:
-
-```typescript
-// Invoke `foo` function with function (callback) arguments
-const result = await controller.invoke(
-  // await foo(async (a: number) => a + 'ABC')
-  'foo',
-  async (a: number) => a + 'ABC');
 
 expected(result).toBe(3);
 ```
@@ -190,45 +182,10 @@ await controller.invoke(
   "haga", controller.signal);
 ```
 
-### Synchronous RPC mode
-
-By default, Sublimity RPC operates asynchronously, but it also supports synchronous RPC patterns. This is useful when working with communication layers that can return responses immediately, such as Electron IPC.
-
-#### Using insertMessageWaitable()
-
-When you need to get a response message directly, use `insertMessageWaitable()`:
-
-```typescript
-// Traditional async mode
-controller.insertMessage(message); // fire-and-forget
-
-// Synchronous mode - returns response message
-const response = await controller.insertMessageWaitable(message);
-// response will be the result/error/none message
-```
-
-#### Configuring onSendMessage() for synchronous mode
-
-You can configure `onSendMessage()` to return a Promise with the response message:
-
-```typescript
-// Synchronous RPC mode (e.g., for Electron IPC)
-const controller = createSublimityRpcController({
-  onSendMessage: async message => {
-    // Send and immediately get response
-    const response = await ipcRenderer.invoke('rpc-channel', message);
-    return response; // Return the response message
-  }
-});
-
-// The controller will automatically use synchronous mode when onSendMessage returns a Promise
-```
-
-This mode provides better performance by avoiding the Deferred pattern when the communication layer supports synchronous request-response patterns.
-
 ### Async generators
 
-Sublimity RPC supports async generators for streaming data transfer. You can register an async generator function and consume it on the peer side.
+Sublimity RPC supports async generators for streaming data transfer.
+You can register an async generator function and consume it on the peer side.
 
 #### Register async generator
 
@@ -310,6 +267,44 @@ try {
 } catch (error) {
   console.error('Generator error:', error.message);
 }
+```
+
+----
+
+### Synchronous message sending/receiving mode
+
+By default, Sublimity RPC sends and receives messages asynchronously, but it also supports synchronous message sending and receiving patterns.
+This provides better performance when using a communication layer such as Electron IPC, which can return responses immediately using `Promise<T>`.
+
+#### Using insertMessageWaitable()
+
+When you need to get a response message directly, use `insertMessageWaitable()`:
+
+```typescript
+// (Traditional asynchronous mode)
+controller.insertMessage(message); // fire-and-forget
+
+// Synchronous mode - Returns a response message in `Promise<SublimityRpcMessage>`.
+// Once the wait is complete, it indicates that the function call is also complete.
+const response = await controller.insertMessageWaitable(message);
+```
+
+#### Configuring onSendMessage() for synchronous mode
+
+You can configure `onSendMessage()` to return a `Promise<SublimityRpcMessage>` with the response message:
+
+```typescript
+// Synchronous message mode (e.g., for Electron IPC)
+const controller = createSublimityRpcController({
+  onSendMessage: async message => {
+    // Send and immediately get response
+    const response = await ipcRenderer.invoke('rpc-channel', message);
+    // Return the response message  (`Promise<SublimityRpcMessage>`)
+    // The controller will automatically use synchronous mode
+    // when onSendMessage returns a Promise
+    return response;
+  }
+});
 ```
 
 ----
