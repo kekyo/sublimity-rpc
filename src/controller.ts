@@ -5,25 +5,18 @@
 import { createDeferred, createDeferredGenerator, Deferred } from "async-primitives";
 import { SublimityRpcController, SublimityRpcControllerOptions, SublimityRpcMessage, TargetFunction, TargetGeneratorFunction } from "./types";
 import { createConsoleLogger } from "./logger";
-
-interface __SpecialObject {
-  __srpcId: string | undefined;
-}
-
-interface __AbortSignal extends AbortSignal, __SpecialObject {
-}
-
-interface __TargetFunction extends TargetFunction<any, any[]>, __SpecialObject {
-}
-
-interface __AbortFunction extends __TargetFunction {
-  __srpcAbortController: AbortController | undefined;
-}
-
-interface __Descriptor {
-  __srpcType: 'function' | 'abort' | undefined;
-  __srpcId: string | undefined;
-}
+import {
+  __SpecialObject,
+  __TargetFunction,
+  __AbortFunction,
+  extractAbortSignal,
+  transformArguments,
+  createSafeError,
+  reconstructError,
+  tryRegisterSpecialObject,
+  tryRegisterStubObject,
+  handleFunctionNotFound
+} from "./internal";
 
 /**
  * Create a Sublimity RPC controller.
@@ -99,22 +92,6 @@ export const createSublimityRpcController =
   };
 
   /**
-   * Extract AbortSignal from arguments.
-   * @param args - The arguments to extract AbortSignal from.
-   * @returns The AbortSignal if found, otherwise undefined.
-   */
-  const extractAbortSignal = (args: any[]): AbortSignal | undefined => {
-    // Extract AbortSignal from arguments
-    for (let argIndex = args.length - 1; argIndex >= 0; argIndex--) {
-      const arg = args[argIndex];
-      if (arg instanceof AbortSignal) {
-        return arg;
-      }
-    }
-    return undefined;
-  };
-
-  /**
    * Register a generator function.
    * @param functionId - The ID of the function to register.
    * @param f - The generator function to register.
@@ -133,130 +110,6 @@ export const createSublimityRpcController =
   };
 
   /**
-   * Try to register a function or AbortSignal.
-   * @param obj - The object to register.
-   * @returns The special descriptor object if the object is a function or AbortSignal, otherwise the original object.
-   */
-  const tryRegisterSpecialObject = (arg: any): any => {
-    // Is argument a function?
-    if (arg instanceof Function) {
-      // Is this function does not registered?
-      let fobj = arg as __TargetFunction;
-      if (!fobj.__srpcId) {
-        // Register anonymous function to object map
-        const functionId = crypto.randomUUID();
-        fobj.__srpcId = functionId;
-        objectMap.set(functionId, new WeakRef(fobj));
-        fr.register(fobj, functionId, fobj);
-        // Also register in functionRegistry to keep it alive until peer sends purge
-        functionRegistry.set(functionId, fobj);
-      }
-
-      // Return function descriptor object
-      const functionDescriptor: __Descriptor = {
-        __srpcType: 'function',
-        __srpcId: fobj.__srpcId
-      };
-      return functionDescriptor;
-    }
-    // Is argument an AbortSignal?
-    else if (arg instanceof AbortSignal) {
-      // Is this AbortSignal does not registered?
-      let aobj = arg as __AbortSignal;
-      let abortSignalId = aobj.__srpcId;
-      if (!abortSignalId) {
-        // Register AbortSignal to object map
-        abortSignalId = crypto.randomUUID();
-        aobj.__srpcId = abortSignalId;
-        objectMap.set(abortSignalId, new WeakRef(aobj));
-        fr.register(aobj, abortSignalId, aobj);
-
-        // Add abort event listener
-        const handleAbort = () => {
-          // Create message ID
-          const messageId = crypto.randomUUID();
-          try {
-            // Send abort
-            onSendMessage({
-              kind: "invoke",
-              messageId,
-              functionId: abortSignalId!,
-              args: [],
-              oneWay: true
-            });
-          } catch (error: unknown) {
-            logger.warn(`Failed to send abort signal: messageId=${messageId}, abortSignalId=${abortSignalId}, error=${error}`);
-          }
-        };
-        arg.addEventListener('abort', handleAbort);
-      }
-
-      // Return abort descriptor object
-      const abortDescriptor: __Descriptor = {
-        __srpcType: 'abort',
-        __srpcId: abortSignalId
-      };
-      return abortDescriptor;
-    } else {
-      // Return original argument if not a function or AbortSignal.
-      return arg;
-    }
-  };
-
-  /**
-   * Try to register a stub function or create AbortSignal based on descriptor.
-   * @param arg - The argument which might be a descriptor.
-   * @returns The stub function, AbortSignal, or original argument.
-   */
-  const tryRegisterStubObject = (arg: any): any => {
-    // Check if argument is a descriptor
-    const descriptor = arg as __Descriptor | undefined;
-    if (descriptor?.__srpcId) {
-      switch (descriptor?.__srpcType) {
-        // Is descriptor function?
-        case 'function': {
-          // Stub function is not in object map?
-          const functionId = descriptor.__srpcId;
-          let stubFunction = objectMap.get(functionId)?.deref() as __TargetFunction | undefined;
-          if (!stubFunction) {
-            // Create stub function
-            stubFunction = ((...args: any[]) => invoke(functionId, ...args)) as __TargetFunction;
-
-            // Register stub function in object map
-            stubFunction.__srpcId = functionId;
-            objectMap.set(functionId, new WeakRef(stubFunction));
-            fr.register(stubFunction, functionId, stubFunction);
-          }
-          // Return stub function
-          return stubFunction;
-        }
-        // Is descriptor abort?
-        case 'abort': {
-          // Stub function is not in object map?
-          const abortSignalId = descriptor.__srpcId;
-          let abortFunction = objectMap.get(abortSignalId)?.deref() as __AbortFunction | undefined;
-          if (!abortFunction?.__srpcAbortController) {
-            // Handle abort descriptor - create AbortController and register abort function
-            const abortController = new AbortController();
-            // Create abort function closure
-            abortFunction = (async () => abortController.abort()) as __AbortFunction;
-            abortFunction.__srpcAbortController = abortController;
-
-            // Register abort function with the same ID as AbortSignal
-            abortFunction.__srpcId = abortSignalId;
-            objectMap.set(abortSignalId, new WeakRef(abortFunction));
-            functionRegistry.set(abortSignalId, abortFunction);
-          }
-          // Return AbortSignal
-          return abortFunction.__srpcAbortController.signal;
-        }
-      }
-    }
-    // Return original argument if not a descriptor or others.
-    return arg;
-  }
-
-  /**
    * Invoke a function.
    * @param functionId - The ID of the function to invoke.
    * @param args - The arguments to pass to the function.
@@ -271,11 +124,13 @@ export const createSublimityRpcController =
     const messageId = crypto.randomUUID();
 
     // Check each argument for functions and replace with special objects
-    const _args = [];
-    for (let argIndex = 0; argIndex < args.length; argIndex++) {
-      // Replace function arguments with special function objects
-      _args.push(tryRegisterSpecialObject(args[argIndex]));
-    }
+    const _args = transformArguments(args, arg => tryRegisterSpecialObject(arg, {
+      objectMap,
+      functionRegistry,
+      fr,
+      logger,
+      onSendMessage
+    }));
 
     // Create deferred object to awaitable result (must be before onSendMessage for sync handling)
     const deferred = createDeferred<TResult>(signal);
@@ -300,15 +155,15 @@ export const createSublimityRpcController =
         
         // Process response directly
         if (response.kind === "result" && response.messageId === messageId) {
-          const result = tryRegisterStubObject(response.result);
+          const result = tryRegisterStubObject(response.result, {
+            objectMap,
+            functionRegistry,
+            fr,
+            invoke
+          });
           return result as TResult;
         } else if (response.kind === "error" && response.messageId === messageId) {
-          const error = new Error(response.error.message);
-          error.name = response.error.name;
-          if (produceStackTrace && response.error.stack) {
-            error.stack += response.error.stack;
-          }
-          throw error;
+          throw reconstructError(response.error, produceStackTrace);
         } else if (response.kind === "none" && response.messageId === messageId) {
           // None response means the message was processed but has no result (one-way)
           // This shouldn't happen in invoke, but handle gracefully
@@ -344,11 +199,13 @@ export const createSublimityRpcController =
     const messageId = crypto.randomUUID();
 
     // Check each argument for functions and replace with special objects
-    const _args = [];
-    for (let argIndex = 0; argIndex < args.length; argIndex++) {
-      // Replace function arguments with special function objects
-      _args.push(tryRegisterSpecialObject(args[argIndex]));
-    }
+    const _args = transformArguments(args, arg => tryRegisterSpecialObject(arg, {
+      objectMap,
+      functionRegistry,
+      fr,
+      logger,
+      onSendMessage
+    }));
 
     try {
       // Send invoking message to peer controller
@@ -409,26 +266,20 @@ export const createSublimityRpcController =
           const functionId = message.functionId;
           const f = objectMap.get(functionId)?.deref() as __TargetFunction | undefined;
           if (!f) {
-            try {
-              // Send error message to peer controller
-              onSendMessage({
-                kind: "error",
-                messageId: message.messageId,
-                error: new Error(`Function '${functionId}' is not found`)
-              });
-            } catch (error: unknown) {
-              // Unknown sending to peer error
-              logger.warn(`Failed sending error message to peer: messageId=${message.messageId}, functionId=${functionId}, error=${error}`);
-            }
+            handleFunctionNotFound(functionId, message.messageId, false, {
+              onSendMessage,
+              logger
+            });
             return;
           }
 
           // Replace special descriptor objects with appropriate objects
-          const _args = [];
-          for (let argIndex = 0; argIndex < message.args.length; argIndex++) {
-            // Process argument through tryRegisterStubObject
-            _args.push(tryRegisterStubObject(message.args[argIndex]));
-          }
+          const _args = transformArguments(message.args, arg => tryRegisterStubObject(arg, {
+            objectMap,
+            functionRegistry,
+            fr,
+            invoke
+          }));
 
           // If the message is one-way, return immediately
           if (message.oneWay) {
@@ -448,14 +299,7 @@ export const createSublimityRpcController =
             result = await f(..._args);
           } catch (error: any) {
             // Create safe error object
-            const seo: Error = {
-              name: error instanceof Error ? error.name : (error as any).constructor.name,
-              message: error instanceof Error ? error.message : String(error)
-            };
-            // Add stack trace to error object if requested
-            if (produceStackTrace && error.stack) {
-              seo.stack = `\n------- Remote stack trace [${controllerId}]:\n${error.stack}`;
-            }
+            const seo = createSafeError(error, controllerId, produceStackTrace);
             try {
               // Send error message to peer controller
               onSendMessage({
@@ -471,7 +315,13 @@ export const createSublimityRpcController =
           }
 
           // Register result as anonymous function when it is a function
-          const _result = tryRegisterSpecialObject(result);
+          const _result = tryRegisterSpecialObject(result, {
+            objectMap,
+            functionRegistry,
+            fr,
+            logger,
+            onSendMessage
+          });
 
           try {
             // Send result message to peer controller
@@ -496,7 +346,12 @@ export const createSublimityRpcController =
             invocations.delete(message.messageId);
 
             // Process result through tryRegisterStubObject
-            const result = tryRegisterStubObject(message.result);
+            const result = tryRegisterStubObject(message.result, {
+              objectMap,
+              functionRegistry,
+              fr,
+              invoke
+            });
 
             // Resolve deferred object
             deferred.resolve(result);
@@ -516,13 +371,7 @@ export const createSublimityRpcController =
             invocations.delete(message.messageId);
 
             // Create real error object
-            const error = new Error(message.error.message);
-            error.name = message.error.name;
-
-            // Add stack trace to error object if requested
-            if (produceStackTrace && message.error.stack) {
-              error.stack += message.error.stack;
-            }
+            const error = reconstructError(message.error, produceStackTrace);
 
             // Reject deferred object
             deferred.reject(error);
@@ -577,19 +426,19 @@ export const createSublimityRpcController =
         
         if (!f) {
           // Return error response
-          return {
-            kind: "error",
-            messageId: message.messageId,
-            error: new Error(`Function '${functionId}' is not found`)
-          };
+          return handleFunctionNotFound(functionId, message.messageId, true, {
+            onSendMessage,
+            logger
+          }) as SublimityRpcMessage;
         }
 
         // Replace special descriptor objects with appropriate objects
-        const _args = [];
-        for (let argIndex = 0; argIndex < message.args.length; argIndex++) {
-          // Process argument through tryRegisterStubObject
-          _args.push(tryRegisterStubObject(message.args[argIndex]));
-        }
+        const _args = transformArguments(message.args, arg => tryRegisterStubObject(arg, {
+          objectMap,
+          functionRegistry,
+          fr,
+          invoke
+        }));
 
         // Handle one-way messages
         if (message.oneWay) {
@@ -613,14 +462,7 @@ export const createSublimityRpcController =
           result = await f(..._args);
         } catch (error: any) {
           // Create safe error object
-          const seo: Error = {
-            name: error instanceof Error ? error.name : (error as any).constructor.name,
-            message: error instanceof Error ? error.message : String(error)
-          };
-          // Add stack trace to error object if requested
-          if (produceStackTrace && error.stack) {
-            seo.stack = `\n------- Remote stack trace [${controllerId}]:\n${error.stack}`;
-          }
+          const seo = createSafeError(error, controllerId, produceStackTrace);
 
           // Return error response
           return {
@@ -631,7 +473,13 @@ export const createSublimityRpcController =
         }
 
         // Register result as anonymous function when it is a function
-        const _result = tryRegisterSpecialObject(result);
+        const _result = tryRegisterSpecialObject(result, {
+          objectMap,
+          functionRegistry,
+          fr,
+          logger,
+          onSendMessage
+        });
         
         // Return success response
         return {
@@ -650,7 +498,12 @@ export const createSublimityRpcController =
           invocations.delete(message.messageId);
 
           // Process result through tryRegisterStubObject
-          const result = tryRegisterStubObject(message.result);
+          const result = tryRegisterStubObject(message.result, {
+            objectMap,
+            functionRegistry,
+            fr,
+            invoke
+          });
 
           // Resolve deferred object
           deferred.resolve(result);
@@ -671,13 +524,7 @@ export const createSublimityRpcController =
           invocations.delete(message.messageId);
 
           // Create real error object
-          const error = new Error(message.error.message);
-          error.name = message.error.name;
-
-          // Add stack trace to error object if requested
-          if (produceStackTrace && message.error.stack) {
-            error.stack += message.error.stack;
-          }
+          const error = reconstructError(message.error, produceStackTrace);
 
           // Reject deferred object
           deferred.reject(error);
