@@ -19,6 +19,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     target: 'es2018',
+    sourcemap: true,
     rollupOptions: {
       external: []
     }
