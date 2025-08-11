@@ -231,22 +231,26 @@ export const createSublimityRpcController =
    * @remarks This is the method to invoke a function.
    */
   const iterate = <TResult = any, TParameters extends any[] = any[]>(
-    functionId: string, ...args: TParameters): AsyncGenerator<TResult, void, unknown> => {
+    functionId: string, ...args: TParameters) => {
 
     const signal = extractAbortSignal(args);
 
     const deferredGenerator = createDeferredGenerator<TResult>({ signal });
 
     // Call invoke with callback as first argument, followed by iterate args
-    invoke(functionId, deferredGenerator.yield, ...args).
-      then(() => {
-        // When invoke returns successfully, call return to complete the generator
-        deferredGenerator.return(signal);
-      }).
-      catch(error => {
-        // When invoke throws, call throw to error the generator
-        deferredGenerator.throw(error, signal);
-      });
+    invoke<TResult, [(item: TResult) => Promise<void>, ...TParameters]>(
+      functionId,
+      (item: TResult) =>
+        deferredGenerator.yield(item, signal),
+      ...args).
+    then(() => {
+      // When invoke returns successfully, call return to complete the generator
+      deferredGenerator.return(signal);
+    }).
+    catch(error => {
+      // When invoke throws, call throw to error the generator
+      deferredGenerator.throw(error, signal);
+    });
 
     return deferredGenerator.generator;
   };
