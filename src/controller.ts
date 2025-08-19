@@ -1,9 +1,9 @@
-// Sublimity pure RPC engine - Simply core implementation of pure RPC engine.
+// Ameba pure RPC engine - Simply core implementation of pure RPC engine.
 // Copyright (c) Kouji Matsui (@kekyo@mi.kekyo.net)
 // License under MIT.
 
 import { createDeferred, createDeferredGenerator, Deferred } from "async-primitives";
-import { SublimityRpcController, SublimityRpcControllerOptions, SublimityRpcMessage, TargetFunction, TargetGeneratorFunction } from "./types";
+import { AmebaRpcController, AmebaRpcControllerOptions, AmebaRpcMessage, TargetFunction, TargetGeneratorFunction } from "./types";
 import { createConsoleLogger } from "./logger";
 import {
   __SpecialObject,
@@ -19,12 +19,12 @@ import {
 } from "./internal";
 
 /**
- * Create a Sublimity RPC controller.
+ * Create a Ameba RPC controller.
  * @param options - The options for the controller.
- * @returns A Sublimity RPC controller.
+ * @returns A Ameba RPC controller.
  */
-export const createSublimityRpcController =
-  (options: SublimityRpcControllerOptions): SublimityRpcController => {
+export const createAmebaRpcController =
+  (options: AmebaRpcControllerOptions): AmebaRpcController => {
   const {
     controllerId = crypto.randomUUID(),
     logger = createConsoleLogger(),
@@ -146,7 +146,7 @@ export const createSublimityRpcController =
         args: _args
       });
       
-      // If onSendMessage returns a Promise<SublimityRpcMessage>, handle synchronous RPC
+      // If onSendMessage returns a Promise<AmebaRpcMessage>, handle synchronous RPC
       if (sendResult instanceof Promise) {
         const response = await sendResult;
         
@@ -260,8 +260,8 @@ export const createSublimityRpcController =
    * @param message - The message to insert.
    * @remarks Insert a RPC message. Then the controller will handle and invocation to target function.
    */
-  const insertMessage = (message: SublimityRpcMessage): void => {
-    const inner = async (message: SublimityRpcMessage) => {
+  const insertMessage = (message: AmebaRpcMessage): void => {
+    const inner = async (message: AmebaRpcMessage) => {
       // Handle message
       switch (message.kind) {
         // Handle invoke message
@@ -419,7 +419,7 @@ export const createSublimityRpcController =
    * @returns Promise that resolves with response message.
    * @remarks Processes RPC message and returns response for synchronous RPC pattern.
    */
-  const insertMessageWaitable = async (message: SublimityRpcMessage): Promise<SublimityRpcMessage> => {
+  const insertMessageWaitable = async (message: AmebaRpcMessage): Promise<AmebaRpcMessage> => {
     
     switch (message.kind) {
       // Handle invoke message
@@ -433,7 +433,7 @@ export const createSublimityRpcController =
           return handleFunctionNotFound(functionId, message.messageId, true, {
             onSendMessage,
             logger
-          }) as SublimityRpcMessage;
+          }) as AmebaRpcMessage;
         }
 
         // Replace special descriptor objects with appropriate objects

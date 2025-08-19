@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createSublimityRpcController } from '../src/controller';
-import type { SublimityRpcMessage } from '../src/types';
+import { createAmebaRpcController } from '../src/controller';
+import type { AmebaRpcMessage } from '../src/types';
 
 describe('AbortSignal Tests', () => {
   let controller1: any;
   let controller2: any;
-  let messageHistory: SublimityRpcMessage[] = [];
+  let messageHistory: AmebaRpcMessage[] = [];
 
   beforeEach(() => {
     messageHistory = [];
 
     // Create first controller
-    controller1 = createSublimityRpcController({
+    controller1 = createAmebaRpcController({
       controllerId: 'controller1',
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         messageHistory.push(message);
         // Forward message to controller2
         setTimeout(() => controller2.insertMessage(message), 0);
@@ -21,9 +21,9 @@ describe('AbortSignal Tests', () => {
     });
 
     // Create second controller
-    controller2 = createSublimityRpcController({
+    controller2 = createAmebaRpcController({
       controllerId: 'controller2',
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         messageHistory.push(message);
         // Forward message to controller1
         setTimeout(() => controller1.insertMessage(message), 0);

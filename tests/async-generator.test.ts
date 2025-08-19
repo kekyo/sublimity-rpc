@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { createSublimityRpcController } from '../src/index';
+import { createAmebaRpcController } from '../src/index';
 import { delay } from 'async-primitives';
 
 describe('Async Generator tests', () => {
   it('basic async generator support', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -34,11 +34,11 @@ describe('Async Generator tests', () => {
   });
 
   it('empty async generator', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -62,11 +62,11 @@ describe('Async Generator tests', () => {
   });
 
   it('async generator with delay', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -93,12 +93,12 @@ describe('Async Generator tests', () => {
   });
 
   it('async generator with error', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); },
       produceStackTrace: true
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); },
       produceStackTrace: true
     });
@@ -134,11 +134,11 @@ describe('Async Generator tests', () => {
   });
 
   it('async generator with complex data types', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -178,11 +178,11 @@ describe('Async Generator tests', () => {
   });
 
   it('async generator with function parameters', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -212,11 +212,11 @@ describe('Async Generator tests', () => {
   });
 
   it('multiple concurrent async generators', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -264,11 +264,11 @@ describe('Async Generator tests', () => {
   });
 
   it('async generator with AbortSignal', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -312,11 +312,11 @@ describe('Async Generator tests', () => {
   });
 
   it('async generator function not found', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 

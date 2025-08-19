@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { createSublimityRpcController } from '../src/controller';
-import { SublimityRpcMessage } from '../src/types';
+import { createAmebaRpcController } from '../src/controller';
+import { AmebaRpcMessage } from '../src/types';
 
 describe('Waitable message send-receive tests', () => {
   it('should handle successful synchronous RPC with return value', async () => {
     // Create sender controller with Promise-based onSendMessage
-    const sender = createSublimityRpcController({
-      onSendMessage: async (message: SublimityRpcMessage) => {
+    const sender = createAmebaRpcController({
+      onSendMessage: async (message: AmebaRpcMessage) => {
         // Directly process the message and return response
         const response = await receiver.insertMessageWaitable(message);
         return response;
@@ -14,8 +14,8 @@ describe('Waitable message send-receive tests', () => {
     });
 
     // Create receiver controller with traditional void onSendMessage
-    const receiver = createSublimityRpcController({
-      onSendMessage: (message: SublimityRpcMessage) => {
+    const receiver = createAmebaRpcController({
+      onSendMessage: (message: AmebaRpcMessage) => {
         // This shouldn't be called in sync mode
         throw new Error('Receiver should not send messages in this test');
       }
@@ -35,9 +35,9 @@ describe('Waitable message send-receive tests', () => {
 
   it('should handle synchronous RPC with thrown exception', async () => {
     // Create sender controller with Promise-based onSendMessage
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       produceStackTrace: true,
-      onSendMessage: async (message: SublimityRpcMessage) => {
+      onSendMessage: async (message: AmebaRpcMessage) => {
         // Directly process the message and return response
         const response = await receiver.insertMessageWaitable(message);
         return response;
@@ -45,9 +45,9 @@ describe('Waitable message send-receive tests', () => {
     });
 
     // Create receiver controller
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       produceStackTrace: true,
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         throw new Error('Receiver should not send messages in this test');
       }
     });
@@ -80,8 +80,8 @@ describe('Waitable message send-receive tests', () => {
     let receivedValue: number | undefined;
     
     // Create sender controller with Promise-based onSendMessage
-    const sender = createSublimityRpcController({
-      onSendMessage: async (message: SublimityRpcMessage) => {
+    const sender = createAmebaRpcController({
+      onSendMessage: async (message: AmebaRpcMessage) => {
         // Directly process the message and return response
         const response = await receiver.insertMessageWaitable(message);
         return response;
@@ -89,8 +89,8 @@ describe('Waitable message send-receive tests', () => {
     });
 
     // Create receiver controller
-    const receiver = createSublimityRpcController({
-      onSendMessage: (message: SublimityRpcMessage) => {
+    const receiver = createAmebaRpcController({
+      onSendMessage: (message: AmebaRpcMessage) => {
         throw new Error('Receiver should not send messages in this test');
       }
     });
@@ -112,16 +112,16 @@ describe('Waitable message send-receive tests', () => {
 
   it('should handle synchronous RPC with complex objects and functions', async () => {
     // Create sender controller with Promise-based onSendMessage
-    const sender = createSublimityRpcController({
-      onSendMessage: async (message: SublimityRpcMessage) => {
+    const sender = createAmebaRpcController({
+      onSendMessage: async (message: AmebaRpcMessage) => {
         const response = await receiver.insertMessageWaitable(message);
         return response;
       }
     });
 
     // Create receiver controller
-    const receiver = createSublimityRpcController({
-      onSendMessage: async (message: SublimityRpcMessage) => {
+    const receiver = createAmebaRpcController({
+      onSendMessage: async (message: AmebaRpcMessage) => {
         const response = await sender.insertMessageWaitable(message);
         return response;
       }
@@ -152,16 +152,16 @@ describe('Waitable message send-receive tests', () => {
 
   it('should handle synchronous RPC when function is not found', async () => {
     // Create sender controller with Promise-based onSendMessage
-    const sender = createSublimityRpcController({
-      onSendMessage: async (message: SublimityRpcMessage) => {
+    const sender = createAmebaRpcController({
+      onSendMessage: async (message: AmebaRpcMessage) => {
         const response = await receiver.insertMessageWaitable(message);
         return response;
       }
     });
 
     // Create receiver controller (no functions registered)
-    const receiver = createSublimityRpcController({
-      onSendMessage: (message: SublimityRpcMessage) => {
+    const receiver = createAmebaRpcController({
+      onSendMessage: (message: AmebaRpcMessage) => {
         throw new Error('Receiver should not send messages in this test');
       }
     });
@@ -180,16 +180,16 @@ describe('Waitable message send-receive tests', () => {
     const messageLog: string[] = [];
     
     // Create sender controller with Promise-based onSendMessage
-    const sender = createSublimityRpcController({
-      onSendMessage: (message: SublimityRpcMessage) => {
+    const sender = createAmebaRpcController({
+      onSendMessage: (message: AmebaRpcMessage) => {
         messageLog.push(`sender -> receiver: ${message.kind}`);
         receiver.insertMessage(message);
       }
     });
 
     // Create receiver controller with traditional async mode
-    const receiver = createSublimityRpcController({
-      onSendMessage: async (message: SublimityRpcMessage) => {
+    const receiver = createAmebaRpcController({
+      onSendMessage: async (message: AmebaRpcMessage) => {
         messageLog.push(`receiver -> sender (waitable): ${message.kind}`);
         const response = await sender.insertMessageWaitable(message);
         messageLog.push(`sender -> receiver (waitable): ${response.kind}`);
@@ -221,8 +221,8 @@ describe('Waitable message send-receive tests', () => {
     const messageLog: string[] = [];
     
     // Create sender controller with Promise-based onSendMessage
-    const sender = createSublimityRpcController({
-      onSendMessage: async (message: SublimityRpcMessage) => {
+    const sender = createAmebaRpcController({
+      onSendMessage: async (message: AmebaRpcMessage) => {
         messageLog.push(`sender -> receiver (waitable): ${message.kind}`);
         const response = await receiver.insertMessageWaitable(message);
         messageLog.push(`receiver -> sender (waitable): ${response.kind}`);
@@ -231,8 +231,8 @@ describe('Waitable message send-receive tests', () => {
     });
 
     // Create receiver controller with traditional async mode
-    const receiver = createSublimityRpcController({
-      onSendMessage: (message: SublimityRpcMessage) => {
+    const receiver = createAmebaRpcController({
+      onSendMessage: (message: AmebaRpcMessage) => {
         messageLog.push(`receiver -> sender: ${message.kind}`);
         sender.insertMessage(message);
       }

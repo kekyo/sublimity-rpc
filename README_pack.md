@@ -1,12 +1,12 @@
-# Sublimity pure RPC engine
+# Ameba pure RPC engine
 
 Core implementation of pure RPC engine in TypeScript.
 
-![sublimity-rpc](./images/sublimity-rpc-120.png)
+![ameba-rpc](./images/ameba-rpc-120.png)
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![npm version](https://img.shields.io/npm/v/sublimity-rpc.svg)](https://www.npmjs.com/package/asublimity-rpc)
+[![npm version](https://img.shields.io/npm/v/ameba-rpc.svg)](https://www.npmjs.com/package/aameba-rpc)
 
 ----
 
@@ -35,23 +35,23 @@ RPC implementation, "Fully symmetric" and "Full-duplex" asynchronous mutual call
 
 ## Usage
 
-To get the Sublimity pure RPC engine working, you will need to perform the following two steps:
+To get the Ameba pure RPC engine working, you will need to perform the following two steps:
 
 1. Create an RPC controller to send and receive RPC messages.
 2. Register RPC callable functions in the RPC controller.
 
 ### Create and setup controller pair
 
-Create Sublimity RPC controller each instance domain.
+Create Ameba RPC controller each instance domain.
 
 In doing so, specify a handler `onSendMessage` that handles RPC messages that should be sent to the peer controller.
 It also calls `insertMessage()`, which tells the controller the RPC message received from the peer controller.
 
 ```typescript
-import { createSublimityRpcController } from 'sublimity-rpc';
+import { createAmebaRpcController } from 'ameba-rpc';
 
-// Create Sublimity RPC controller
-const controller = createSublimityRpcController({
+// Create Ameba RPC controller
+const controller = createAmebaRpcController({
   // Handler for RPC message sending
   onSendMessage: async message => {
     // S1. Serialize RPC message to JSON
@@ -101,7 +101,7 @@ const disposer = controller.register({
 disposer.release();
 ```
 
-For more information, [see repository documents.](https://github.com/kekyo/sublimity-rpc/)
+For more information, [see repository documents.](https://github.com/kekyo/ameba-rpc/)
 
 ----
 

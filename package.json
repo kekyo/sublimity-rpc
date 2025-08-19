@@ -1,5 +1,5 @@
 {
-  "name": "sublimity-rpc",
+  "name": "ameba-rpc",
   "version": "0.0.1",
   "description": "Simply core implementation of pure RPC engine.",
   "keywords": [
@@ -11,9 +11,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kekyo/sublimity-rpc.git"
+    "url": "https://github.com/kekyo/ameba-rpc.git"
   },
-  "homepage": "https://github.com/kekyo/sublimity-rpc#readme",
+  "homepage": "https://github.com/kekyo/ameba-rpc#readme",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -28,7 +28,7 @@
   "readme": "README_pack.md",
   "files": [
     "dist",
-    "images/sublimity-rpc-120.png"
+    "images/ameba-rpc-120.png"
   ],
   "scripts": {
     "build": "vite build",
