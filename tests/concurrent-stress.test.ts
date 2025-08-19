@@ -1,10 +1,10 @@
-// Sublimity pure RPC engine - Concurrent stress test
+// Ameba pure RPC engine - Concurrent stress test
 // Copyright (c) Kouji Matsui (@kekyo@mi.kekyo.net)
 // License under MIT.
 
 import { describe, test, expect } from "vitest";
-import { createSublimityRpcController } from "../src/controller";
-import { SublimityRpcMessage } from "../src/types";
+import { createAmebaRpcController } from "../src/controller";
+import { AmebaRpcMessage } from "../src/types";
 import { delay } from "async-primitives";
 
 describe("Concurrent Bidirectional RPC Stress Tests", () => {
@@ -17,9 +17,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     let count2 = 0;
 
     // Create controller 1
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       controllerId: "controller1",
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         // Random delay between 10-20ms
         const delay = getDelayTime();
         setTimeout(() => {
@@ -33,9 +33,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     });
 
     // Create controller 2
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       controllerId: "controller2",
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         // Random delay between 10-20ms
         const delay = getDelayTime();
         setTimeout(() => {
@@ -119,9 +119,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     let errorCount = 0;
 
     // Create controller 1
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       controllerId: "controller1-mixed",
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         const delay = getDelayTime();
         setTimeout(() => {
           controller2.insertMessage(message);
@@ -130,9 +130,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     });
 
     // Create controller 2  
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       controllerId: "controller2-mixed",
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         const delay = getDelayTime();
         setTimeout(() => {
           controller1.insertMessage(message);
@@ -217,9 +217,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     let results2: number[] = [];
 
     // Create controllers with tracking
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       controllerId: "controller1-seq",
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         const delay = getDelayTime();
         setTimeout(() => {
           controller2.insertMessage(message);
@@ -227,9 +227,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
       }
     });
 
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       controllerId: "controller2-seq",
-      onSendMessage: (message: SublimityRpcMessage) => {
+      onSendMessage: (message: AmebaRpcMessage) => {
         const delay = getDelayTime();
         setTimeout(() => {
           controller1.insertMessage(message);
@@ -296,9 +296,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     let count2 = 0;
 
     // Create controller 1
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       controllerId: "controller1",
-      onSendMessage: async (message: SublimityRpcMessage) => {
+      onSendMessage: async (message: AmebaRpcMessage) => {
         // Random delay between 10-20ms
         await delay(getDelayTime());
         try {
@@ -311,9 +311,9 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     });
 
     // Create controller 2
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       controllerId: "controller2",
-      onSendMessage: async (message: SublimityRpcMessage) => {
+      onSendMessage: async (message: AmebaRpcMessage) => {
         // Random delay between 10-20ms
         await delay(getDelayTime());
         try {
@@ -396,18 +396,18 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     let errorCount = 0;
 
     // Create controller 1
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       controllerId: "controller1-mixed",
-      onSendMessage: async (message: SublimityRpcMessage) => {
+      onSendMessage: async (message: AmebaRpcMessage) => {
         await delay(getDelayTime());
         return await controller2.insertMessageWaitable(message);
       }
     });
 
     // Create controller 2  
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       controllerId: "controller2-mixed",
-      onSendMessage: async (message: SublimityRpcMessage) => {
+      onSendMessage: async (message: AmebaRpcMessage) => {
         await delay(getDelayTime());
         return await controller1.insertMessageWaitable(message);
       }
@@ -490,17 +490,17 @@ describe("Concurrent Bidirectional RPC Stress Tests", () => {
     let results2: number[] = [];
 
     // Create controllers with tracking
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       controllerId: "controller1-seq",
-      onSendMessage: async (message: SublimityRpcMessage) => {
+      onSendMessage: async (message: AmebaRpcMessage) => {
         await delay(getDelayTime());
         return await controller2.insertMessageWaitable(message);
       }
     });
 
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       controllerId: "controller2-seq",
-      onSendMessage: async (message: SublimityRpcMessage) => {
+      onSendMessage: async (message: AmebaRpcMessage) => {
         await delay(getDelayTime());
         return await controller1.insertMessageWaitable(message);
       }

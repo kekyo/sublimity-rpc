@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve(fileURLToPath(new URL('.', import.meta.url)), 'src/index.ts'),
-      name: 'sublimity-rpc',
+      name: 'ameba-rpc',
       fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
       formats: ['es', 'cjs'],
     },

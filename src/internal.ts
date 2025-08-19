@@ -1,8 +1,8 @@
-// Sublimity pure RPC engine - Internal helper functions.
+// Ameba pure RPC engine - Internal helper functions.
 // Copyright (c) Kouji Matsui (@kekyo@mi.kekyo.net)
 // License under MIT.
 
-import { SublimityRpcMessage, TargetFunction, Logger } from "./types";
+import { AmebaRpcMessage, TargetFunction, Logger } from "./types";
 
 export interface __SpecialObject {
   __srpcId: string | undefined;
@@ -103,7 +103,7 @@ export const tryRegisterSpecialObject = (
     functionRegistry: Map<string, __TargetFunction>,
     fr: FinalizationRegistry<string>,
     logger: Logger,
-    onSendMessage: (message: SublimityRpcMessage) => void | Promise<SublimityRpcMessage>
+    onSendMessage: (message: AmebaRpcMessage) => void | Promise<AmebaRpcMessage>
   }
 ): any => {
   const { objectMap, functionRegistry, fr, logger, onSendMessage } = context;
@@ -250,10 +250,10 @@ export const handleFunctionNotFound = (
   messageId: string,
   waitableMode: boolean,
   context: {
-    onSendMessage: (message: SublimityRpcMessage) => void | Promise<SublimityRpcMessage>,
+    onSendMessage: (message: AmebaRpcMessage) => void | Promise<AmebaRpcMessage>,
     logger: Logger
   }
-): SublimityRpcMessage | void => {
+): AmebaRpcMessage | void => {
   const { onSendMessage, logger } = context;
   
   if (waitableMode) {

@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { createSublimityRpcController, createConsoleLogger } from '../src/index';
+import { createAmebaRpcController, createConsoleLogger } from '../src/index';
 
 describe('Controller tests', () => {
   it('overall full-duplex test', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       logger: createConsoleLogger(),
       onSendMessage: message => { sender.insertMessage(message); }
     });
@@ -32,12 +32,12 @@ describe('Controller tests', () => {
   });
 
   it('function is not found', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); },
       produceStackTrace: true
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); },
       produceStackTrace: true
     });
@@ -55,12 +55,12 @@ describe('Controller tests', () => {
   });
 
   it('standard error handling', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); },
       produceStackTrace: true
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); },
       produceStackTrace: true
     });
@@ -83,12 +83,12 @@ describe('Controller tests', () => {
   });
 
   it('unnormal error handling', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); },
       produceStackTrace: true
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); },
       produceStackTrace: true
     });
@@ -111,12 +111,12 @@ describe('Controller tests', () => {
   });
 
   it('Promise wrapped error handling', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); },
       produceStackTrace: true
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); },
       produceStackTrace: true
     });
@@ -139,11 +139,11 @@ describe('Controller tests', () => {
   });
 
   it('an anonymous function', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -165,11 +165,11 @@ describe('Controller tests', () => {
   });
 
   it('anonymous functions', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -192,11 +192,11 @@ describe('Controller tests', () => {
   });
 
   it('duplex anonymous function invocation', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 
@@ -221,12 +221,12 @@ describe('Controller tests', () => {
   });
 
   it('an anonymous function throw error', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); },
       produceStackTrace: true
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); },
       produceStackTrace: true
     });
@@ -254,11 +254,11 @@ describe('Controller tests', () => {
   });
 
   it('returning a function from remote call', async () => {
-    const sender = createSublimityRpcController({
+    const sender = createAmebaRpcController({
       onSendMessage: message => { receiver.insertMessage(message); }
     });
 
-    const receiver = createSublimityRpcController({
+    const receiver = createAmebaRpcController({
       onSendMessage: message => { sender.insertMessage(message); }
     });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createSublimityRpcController } from '../src/controller';
-import { SublimityRpcMessage } from '../src/types';
+import { createAmebaRpcController } from '../src/controller';
+import { AmebaRpcMessage } from '../src/types';
 
 describe('Garbage Collection Tests', () => {
   it('should warn on logger after GC collection of anonymous functions', async () => {
@@ -17,14 +17,14 @@ describe('Garbage Collection Tests', () => {
     // Create two controllers to simulate RPC communication
     // [test actor]        ==> controller1 --> controller2 ==> testFunction()
     // anonymousFunction() <== controller1 <-- controller2 <==/ (callback)
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       onSendMessage: (message) => {
         // Forward message to controller2
         setTimeout(() => controller2.insertMessage(message), 0);
       }
     });
 
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       onSendMessage: (message) => {
         // Forward message to controller1
         setTimeout(() => controller1.insertMessage(message), 0);
@@ -81,12 +81,12 @@ describe('Garbage Collection Tests', () => {
 
   it('should fail spurious calls after GC collection of anonymous functions', async () => {
     let capturedFunctionId: string | undefined;
-    let messageHistory: SublimityRpcMessage[] = [];
+    let messageHistory: AmebaRpcMessage[] = [];
 
     // Create two controllers to simulate RPC communication
     // [test actor]        ==> controller1 --> controller2 ==> testFunction()
     // anonymousFunction() <== controller1 <-- controller2 <==/ (callback)
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       onSendMessage: (message) => {
         messageHistory.push(message);
         // Forward message to controller2
@@ -94,7 +94,7 @@ describe('Garbage Collection Tests', () => {
       }
     });
 
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       onSendMessage: (message) => {
         messageHistory.push(message);
         // Forward message to controller1
@@ -149,7 +149,7 @@ describe('Garbage Collection Tests', () => {
     // Now try to call the function directly with the captured function ID
     // This should fail because the anonymous function was garbage collected
     // Create a fake invoke message with the captured function ID
-    const fakeInvokeMessage: SublimityRpcMessage = {
+    const fakeInvokeMessage: AmebaRpcMessage = {
       kind: 'invoke',
       messageId: crypto.randomUUID(),
       functionId: capturedFunctionId!,
@@ -179,16 +179,16 @@ describe('Garbage Collection Tests', () => {
   
   it('should handle multiple anonymous functions and GC properly', async () => {
     let capturedFunctionIds: string[] = [];
-    let messageHistory: SublimityRpcMessage[] = [];
+    let messageHistory: AmebaRpcMessage[] = [];
 
-    const controller1 = createSublimityRpcController({
+    const controller1 = createAmebaRpcController({
       onSendMessage: (message) => {
         messageHistory.push(message);
         setTimeout(() => controller2.insertMessage(message), 0);
       }
     });
 
-    const controller2 = createSublimityRpcController({
+    const controller2 = createAmebaRpcController({
       onSendMessage: (message) => {
         messageHistory.push(message);
         setTimeout(() => controller1.insertMessage(message), 0);
@@ -240,7 +240,7 @@ describe('Garbage Collection Tests', () => {
 
     // Try to call with captured function IDs - both should fail
     for (const functionId of capturedFunctionIds) {
-      const fakeMessage: SublimityRpcMessage = {
+      const fakeMessage: AmebaRpcMessage = {
         kind: 'invoke',
         messageId: crypto.randomUUID(),
         functionId,

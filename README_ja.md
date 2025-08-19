@@ -1,12 +1,12 @@
-# Sublimity pure RPC engine
+# Ameba pure RPC engine
 
 TypeScript における純粋な RPC エンジンのコア実装。
 
-![sublimity-rpc](./images/sublimity-rpc-120.png)
+![ameba-rpc](./images/ameba-rpc-120.png)
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![npm version](https://img.shields.io/npm/v/sublimity-rpc.svg)](https://www.npmjs.com/package/asublimity-rpc)
+[![npm version](https://img.shields.io/npm/v/ameba-rpc.svg)](https://www.npmjs.com/package/aameba-rpc)
 
 ----
 
@@ -58,28 +58,28 @@ RPC 実装は「完全対称」で「全二重」の非同期相互呼び出し�
 ## インストール
 
 ```bash
-npm install sublimity-rpc
+npm install ameba-rpc
 ```
 
 ## 使用方法
 
-Sublimity pure RPC エンジンを動作させるには、以下の 2 つのステップを実行する必要があります:
+Ameba pure RPC エンジンを動作させるには、以下の 2 つのステップを実行する必要があります:
 
 1. RPC メッセージを送受信する RPC コントローラーを作成する
 2. RPC コントローラーに RPC 呼び出し可能関数を登録する
 
 ### コントローラーペアの作成とセットアップ
 
-各インスタンスドメインに Sublimity RPC コントローラーを作成します。
+各インスタンスドメインに Ameba RPC コントローラーを作成します。
 
 その際、ピアコントローラーに送信すべき RPC メッセージを処理するハンドラー `onSendMessage` を指定します。
 また、ピアコントローラーから受信した RPC メッセージをコントローラーに伝える `insertMessage()` を呼び出します。
 
 ```typescript
-import { createSublimityRpcController } from 'sublimity-rpc';
+import { createAmebaRpcController } from 'ameba-rpc';
 
-// Sublimity RPC コントローラーを作成
-const controller = createSublimityRpcController({
+// Ameba RPC コントローラーを作成
+const controller = createAmebaRpcController({
   // RPC メッセージ送信のハンドラー
   onSendMessage: async message => {
     // S1. RPC メッセージを JSON にシリアライズ
@@ -184,7 +184,7 @@ await controller.invoke(
 
 ### 非同期ジェネレーター
 
-Sublimity RPC はストリーミングデータ転送のための非同期ジェネレーターをサポートしています。
+Ameba RPC はストリーミングデータ転送のための非同期ジェネレーターをサポートしています。
 非同期ジェネレーター関数を登録して、ピア側で消費できます。
 
 #### 非同期ジェネレーターの登録
@@ -273,7 +273,7 @@ try {
 
 ### 同期メッセージ送受信モード
 
-デフォルトでは Sublimity RPC は非同期的にメッセージを送受信しますが、同期メッセージ送受信パターンもサポートしています。
+デフォルトでは Ameba RPC は非同期的にメッセージを送受信しますが、同期メッセージ送受信パターンもサポートしています。
 これは Electron IPC のような、`Promise<T>` で即座にレスポンスを返すことができる通信レイヤーを使用する場合に、より良いパフォーマンスを発揮します。
 
 #### insertMessageWaitable() の使用
@@ -284,22 +284,22 @@ try {
 // (従来の非同期モード)
 controller.insertMessage(message); // fire-and-forget
 
-// 同期モード - `Promise<SublimityRpcMessage>` でレスポンスメッセージを返す
+// 同期モード - `Promise<AmebaRpcMessage>` でレスポンスメッセージを返す
 // 待機が完了すると、関数呼び出しも完了していることを示す
 const response = await controller.insertMessageWaitable(message);
 ```
 
 #### 同期モード用の onSendMessage() の設定
 
-`onSendMessage()` をレスポンスメッセージを含む `Promise<SublimityRpcMessage>` を返すように設定できます:
+`onSendMessage()` をレスポンスメッセージを含む `Promise<AmebaRpcMessage>` を返すように設定できます:
 
 ```typescript
 // 同期メッセージモード（例：Electron IPC 用）
-const controller = createSublimityRpcController({
+const controller = createAmebaRpcController({
   onSendMessage: async message => {
     // 送信して即座にレスポンスを取得
     const response = await ipcRenderer.invoke('rpc-channel', message);
-    // レスポンスメッセージを返す（`Promise<SublimityRpcMessage>`）
+    // レスポンスメッセージを返す（`Promise<AmebaRpcMessage>`）
     // onSendMessage が Promise を返すとき、コントローラーは自動的に同期モードを使用します
     return response;
   }

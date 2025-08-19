@@ -1,4 +1,4 @@
-// Sublimity pure RPC engine - Simply core implementation of pure RPC engine.
+// Ameba pure RPC engine - Simply core implementation of pure RPC engine.
 // Copyright (c) Kouji Matsui (@kekyo@mi.kekyo.net)
 // License under MIT.
 
@@ -15,7 +15,7 @@ export interface Logger {
 /**
  * Base RPC message interface.
  */
-export interface SublimityRpcMessageBase {
+export interface AmebaRpcMessageBase {
   readonly kind: "invoke" | "result" | "error" | "purge" | "none";
   /**
    * Message ID.
@@ -27,7 +27,7 @@ export interface SublimityRpcMessageBase {
 /**
  * Invoke message interface.
  */
-export interface SublimityRpcMessageInvoke extends SublimityRpcMessageBase {
+export interface AmebaRpcMessageInvoke extends AmebaRpcMessageBase {
   readonly kind: "invoke";
   /**
    * Function ID.
@@ -49,7 +49,7 @@ export interface SublimityRpcMessageInvoke extends SublimityRpcMessageBase {
 /**
  * Result message interface.
  */
-export interface SublimityRpcMessageResult extends SublimityRpcMessageBase {
+export interface AmebaRpcMessageResult extends AmebaRpcMessageBase {
   readonly kind: "result";
   /**
    * Result
@@ -61,7 +61,7 @@ export interface SublimityRpcMessageResult extends SublimityRpcMessageBase {
 /**
  * Error message interface.
  */
-export interface SublimityRpcMessageError extends SublimityRpcMessageBase {
+export interface AmebaRpcMessageError extends AmebaRpcMessageBase {
   readonly kind: "error";
   /**
    * Error
@@ -73,7 +73,7 @@ export interface SublimityRpcMessageError extends SublimityRpcMessageBase {
 /**
  * Purge message interface.
  */
-export interface SublimityRpcMessagePurge extends SublimityRpcMessageBase {
+export interface AmebaRpcMessagePurge extends AmebaRpcMessageBase {
   readonly kind: "purge";
   /**
    * Error
@@ -85,20 +85,20 @@ export interface SublimityRpcMessagePurge extends SublimityRpcMessageBase {
 /**
  * Nothing operator interface.
  */
-export interface SublimityRpcMessageNone extends SublimityRpcMessageBase {
+export interface AmebaRpcMessageNone extends AmebaRpcMessageBase {
   readonly kind: "none";
 }
 
 /**
- * Sublimity RPC message type.
+ * Ameba RPC message type.
  */
-export type SublimityRpcMessage =
-  SublimityRpcMessageInvoke | SublimityRpcMessageResult | SublimityRpcMessageError | SublimityRpcMessagePurge | SublimityRpcMessageNone;
+export type AmebaRpcMessage =
+  AmebaRpcMessageInvoke | AmebaRpcMessageResult | AmebaRpcMessageError | AmebaRpcMessagePurge | AmebaRpcMessageNone;
 
 /**
- * Sublimity RPC controller options interface.
+ * Ameba RPC controller options interface.
  */
-export interface SublimityRpcControllerOptions {
+export interface AmebaRpcControllerOptions {
   /**
    * Controller ID.
    * @remarks This is the ID of the controller. Default is a random UUID.
@@ -113,9 +113,9 @@ export interface SublimityRpcControllerOptions {
    * Send message handler. Always required.
    * @remarks 
    * - Return void for traditional async message passing (fire-and-forget)
-   * - Return Promise<SublimityRpcMessage> for synchronous RPC pattern (must return response message)
+   * - Return Promise<AmebaRpcMessage> for synchronous RPC pattern (must return response message)
    */
-  onSendMessage: (message: SublimityRpcMessage) => void | Promise<SublimityRpcMessage>;
+  onSendMessage: (message: AmebaRpcMessage) => void | Promise<AmebaRpcMessage>;
   /**
    * Produce stack trace.
    * @remarks This is the flag to produce stack trace to return to the caller. Default is false.
@@ -143,9 +143,9 @@ export interface Releasable extends Disposable {
 }
 
 /**
- * Sublimity RPC controller interface.
+ * Ameba RPC controller interface.
  */
-export interface SublimityRpcController extends Releasable {
+export interface AmebaRpcController extends Releasable {
   /**
    * Register a function.
    * @param functionId - The ID of the function to register.
@@ -200,7 +200,7 @@ export interface SublimityRpcController extends Releasable {
    * @param message - The message to insert.
    * @remarks Insert a RPC message. Then the controller will handle and invocation to target function.
    */
-  readonly insertMessage: (message: SublimityRpcMessage) => void;
+  readonly insertMessage: (message: AmebaRpcMessage) => void;
   
   /**
    * Insert a RPC message to controller and return response.
@@ -208,5 +208,5 @@ export interface SublimityRpcController extends Releasable {
    * @returns Promise that resolves with response message.
    * @remarks Processes RPC message and returns response for synchronous RPC pattern.
    */
-  readonly insertMessageWaitable: (message: SublimityRpcMessage) => Promise<SublimityRpcMessage>;
+  readonly insertMessageWaitable: (message: AmebaRpcMessage) => Promise<AmebaRpcMessage>;
 }
