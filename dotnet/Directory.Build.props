@@ -1,0 +1,66 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <Platforms>AnyCPU</Platforms>
+      
+    <DebugSymbols>true</DebugSymbols>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/kekyo/ameba-rpc.git</RepositoryUrl>
+    <IsPackable>false</IsPackable>
+
+    <RootNamespace>Ameba.Rpc</RootNamespace>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1570;CS1591;CA1416;CS8981;NETSDK1215</NoWarn>
+
+    <Product>Ameba.Rpc</Product>
+    <Trademark>Ameba.Rpc</Trademark>
+    <Copyright>Copyright (c) Kouji Matsui</Copyright>
+    <Description>Simply core implementation of pure RPC engine.</Description>
+
+    <Company>Kouji Matsui (@kekyo@mi.kekyo.net)</Company>
+    <Authors>Kouji Matsui (@kekyo@mi.kekyo.net)</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/kekyo/ameba-rpc</PackageProjectUrl>
+    <PackageIcon>ameba-rpc-120.png</PackageIcon>
+    <PackageTags>rpc;pure</PackageTags>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <NoWarn>$(NoWarn);NU1605;NU1701;NU1803;NU1902;NU1903</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' != 'Release'">
+    <DebugType>portable</DebugType>
+    <Deterministic>false</Deterministic>
+    <EmbedUntrackedSources>false</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>embedded</DebugType>
+    <Deterministic>true</Deterministic>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <RepoRoot>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(MSBuildThisFileDirectory)'),'..'))</RepoRoot>
+    <PathMap>$(RepoRoot)=.</PathMap>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RelaxVersioner" Version="3.19.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+    <PackageReference Include="PolySharp" Version="1.15.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <SourceRoot Include="$(MSBuildThisFileDirectory)/"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
