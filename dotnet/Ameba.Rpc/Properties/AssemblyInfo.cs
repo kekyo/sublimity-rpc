@@ -1,11 +1,6 @@
-﻿////////////////////////////////////////////////////////////////////////////
-//
-// Ameba pure RPC engine - Simply core implementation of pure RPC engine.
+﻿// Ameba pure RPC engine - Simply core implementation of pure RPC engine.
 // Copyright (c) Kouji Matsui (@kekyo@mi.kekyo.net)
-//
-// Licensed under MIT: https://opensource.org/licenses/MIT
-//
-////////////////////////////////////////////////////////////////////////////
+// License under MIT.
 
 using System.Runtime.CompilerServices;
 
